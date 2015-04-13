@@ -1,0 +1,6 @@
+*.gem
+*.deb
+.idea
+quick.sh
+*~
+*.swp
