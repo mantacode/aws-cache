@@ -3,6 +3,8 @@ rvm:
 - 1.9.3
 cache:
 - bundler
+script: bundle exec rspec spec
 deploy:
   provider: rubygems
   api_key:
+    secure: awarLy2e4e7t6Hmwu14x9xX8lCAAjo2STDdHtiHdXz11HEerXm7qWsb8lauuTGk4XntFfefBY8pH2cMYz24jdTO26nKLVs4oGm2kpLFkSl1IBAhq7OIzpXk7NMfKzbrctjIvMraUoGniqAPfQuoTRJOI2Yhmi8wMGDGYZB4RpYs=
