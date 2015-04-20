@@ -7,4 +7,4 @@ script: bundle exec rspec spec
 deploy:
   provider: rubygems
   api_key:
-    secure: awarLy2e4e7t6Hmwu14x9xX8lCAAjo2STDdHtiHdXz11HEerXm7qWsb8lauuTGk4XntFfefBY8pH2cMYz24jdTO26nKLVs4oGm2kpLFkSl1IBAhq7OIzpXk7NMfKzbrctjIvMraUoGniqAPfQuoTRJOI2Yhmi8wMGDGYZB4RpYs=
+    secure: qTdziX+VEf9OQzamyQcvsC+8hSrtnjMxDpLkSABcI8HyJAcPcvCPCRQot8sE+5xLVYf8owWitXWhl6NCC5FudyzjwU9GeqhK/GRKVO0MNJcE1OvjxyYVogIipyQT4M1qItuuBmU+dceUwDFLqWM1K/hsLZCm1NHR+u0EktnsQDM=
