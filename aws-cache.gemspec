@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name = 'aws-cache'
   s.homepage = 'https://github.com/mantacode/aws-cache'
-  s.version = '0.0.02'
+  s.version = '0.0.03'
   s.date = '2015-04-13'
   s.summary = 'AWS api access layer that caches via Redis.'
   s.description = 'You know, to avoid api throttling errors.'

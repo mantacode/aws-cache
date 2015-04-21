@@ -163,7 +163,6 @@ class AwsCache
   def cache_get(key, ttl)
     vkey = "#{key}_#{@keyspace}"
     hash = @redis.get(vkey)
-puts hash
     unless hash.nil?
       hash = YAML.load(hash)
     end
