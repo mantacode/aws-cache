@@ -6,7 +6,7 @@ require 'pry'
 
 class AwsCache
   # Please follow semantic versioning (semver.org).
-  VERSION = '0.0.1'
+  VERSION = '0.0.05'
 
   def initialize(opts)
     @redis = optional_element(opts, ['redis'])

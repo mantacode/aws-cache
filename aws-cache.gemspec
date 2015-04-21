@@ -1,8 +1,11 @@
+lib = File.expand_path('../lib', __FILE__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require 'aws-cache'
+
 Gem::Specification.new do |s|
   s.name = 'aws-cache'
   s.homepage = 'https://github.com/mantacode/aws-cache'
-  s.version = '0.0.04'
-  s.date = '2015-04-13'
+  s.version = AwsCache::VERSION
   s.summary = 'AWS api access layer that caches via Redis.'
   s.description = 'You know, to avoid api throttling errors.'
   s.licenses = ['MIT']
