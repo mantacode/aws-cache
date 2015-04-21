@@ -3,10 +3,11 @@ require 'json'
 require 'aws-sdk'
 require 'yaml'
 require 'pry'
+require 'aws-cache-version'
 
 class AwsCache
   # Please follow semantic versioning (semver.org).
-  VERSION = '0.0.05'
+  VERSION = AwsCacheVersion::VERSION
 
   def initialize(opts)
     @redis = optional_element(opts, ['redis'])
