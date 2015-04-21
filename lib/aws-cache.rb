@@ -2,6 +2,7 @@ require 'redis'
 require 'json'
 require 'aws-sdk'
 require 'yaml'
+require 'pry'
 
 class AwsCache
   # Please follow semantic versioning (semver.org).
@@ -43,7 +44,7 @@ class AwsCache
     instances = self.ec2_instances
     stack_instances = {}
     instances.each do |id, instance|
-      if stack_name == optional_element(instance, [':tags','StackName',':value'], '')
+      if stack_name == optional_element(instance, [:tags,'StackName',:value], '')
         stack_instances[id] = instance
       end
     end
@@ -75,7 +76,7 @@ class AwsCache
     groups = self.auto_scaling_groups
     stack_groups = {}
     groups.each do |name, group|
-      if stack_name == optional_element(group, [':tags','StackName',':value'], '')
+      if stack_name == optional_element(group, [:tags,'StackName',:value], '')
         stack_groups[name] = group
       end
     end
@@ -152,12 +153,23 @@ class AwsCache
   private
   def optional_element(hash, keys, default=nil)
     keys.each do |key|
-      if !hash.is_a?(Hash) || !hash.has_key?(key)
+      if !has_key?(hash, key)
 	return default
       end
       hash = hash[key]
     end
     return hash 
+  end
+
+  def has_key?(hash_or_struct, key)
+    hos = hash_or_struct
+    if hos.is_a?(Hash) && hos.has_key?(key)
+      return true
+    end
+    if hos.is_a?(Struct) && hos.members.any? { |m| m == key }
+      return true
+    end
+    return false
   end
 
   def cache_get(key, ttl)
