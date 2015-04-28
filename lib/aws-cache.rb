@@ -10,9 +10,11 @@ class AwsCache
   VERSION = AwsCacheVersion::VERSION
 
   def initialize(opts)
+    unless opts.has_key?('port') then opts['port'] = 6379 end
+    unless opts.has_key?('host') then opts['host'] = 'aws-cache' end
     @redis = optional_element(opts, ['redis'])
     if @redis.nil?
-      @redis = Redis.new(url: 'redis://aws-cache:6379/0')
+      @redis = Redis.new(url: "redis://#{opts['host']}:#{opts['port']}/0")
     end
     @keyspace = optional_element(opts, ['keyspace'], AwsCache::VERSION)
     @region = optional_element(opts, ['region'], 'us-east-1')
@@ -23,9 +25,9 @@ class AwsCache
       instances = {}
     
       ec2 = Aws::EC2::Client.new(region: @region)
-      page = ec2.describe_instances
-      page.each do |page|
-	page = 
+      pages = ec2.describe_instances
+      pages.each do |page|
+	      page = 
         page.data[:reservations].each do |res|
           res[:instances].each do |instance|
 	    list_to_hash!(instance, [:tags], :key)
@@ -57,10 +59,10 @@ class AwsCache
       groups = {}
     
       autoscaling = Aws::AutoScaling::Client.new(region: @region)
-      page = autoscaling.describe_auto_scaling_groups
-      page.each do |page|
+      pages = autoscaling.describe_auto_scaling_groups
+      pages.each do |page|
         page.data[:auto_scaling_groups].each do |group|
-	  instances = {}
+	  instances = Hash.new()
 	  list_to_hash!(group, [:instances], :instance_id)
 	  list_to_hash!(group, [:tags], :key)
 	  groups[group[:auto_scaling_group_name]] = group
@@ -89,8 +91,8 @@ class AwsCache
       cloudformation_stacks = {}
     
       cfn = Aws::CloudFormation::Client.new(region: @region)
-      page = cfn.describe_stacks
-      page.each do |page|
+      pages = cfn.describe_stacks
+      pages.each do |page|
         page.data[:stacks].each do |stack|
 	  list_to_hash!(stack, [:parameters], :parameter_key)
 	  list_to_hash!(stack, [:outputs], :output_key)
@@ -115,8 +117,8 @@ class AwsCache
       stack_resources = {}
       cfn = Aws::CloudFormation::Client.new(region: @region)
 
-      page = cfn.list_stack_resources(stack_name: stack_name)
-      page.each do |page|
+      pages = cfn.list_stack_resources(stack_name: stack_name)
+      pages.each do |page|
         resources = page.data[:stack_resource_summaries]
 	resources.each do |resource|
 	  stack_resources[resource[:logical_resource_id]] = resource
@@ -138,8 +140,8 @@ class AwsCache
       stacks = []
     
       cfn = Aws::CloudFormation::Client.new(region: @region)
-      page = cfn.list_stacks
-      page.each do |page|
+      pages = cfn.list_stacks
+      pages.each do |page|
         page.data[:stack_summaries].each do |stack|
 	  stacks.push(stack)
 	end
@@ -150,6 +152,29 @@ class AwsCache
 
     return stacks
   end
+
+  def get_snapshots()
+    snapshots = cache_get('aws_ec2_snapshots', 9) do
+      snapshots = Hash.new()
+      ec2 = Aws::EC2::Client.new(region: @region)
+      pages = ec2.describe_snapshots
+      pages.each do |page|
+        page.data.each do |data|
+          data.each do |snap|
+            if snapshots.has_key?(snap[:volume_id]) then
+              snapshots[snap[:volume_id]].push(snap)
+            else
+              snapshots[snap[:volume_id]] = Array.new()
+              snapshots[snap[:volume_id]].push(snap)
+            end
+          end
+        end
+      end
+      snapshots
+	  end
+    return snapshots
+  end
+
 
   private
   def optional_element(hash, keys, default=nil)

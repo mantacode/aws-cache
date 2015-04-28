@@ -10,11 +10,14 @@ require 'aws-cache'
 #require 'mstacks'
 require 'redis'
 
+host = 'redis.aws.ecnext.net'
+port = 6379
+
 keyspace = ARGV[0] || 'debug'
-cache = AwsCache.new({'keyspace' => keyspace})
+cache = AwsCache.new({'keyspace' => keyspace, 'host' => host, 'port' => port})
 
 puts AwsCache::VERSION
-exit
+#exit
 
 #active_stacks = Mstacks.new.active_mstacks_hash
 #ap active_stacks
@@ -36,7 +39,7 @@ exit
 #  puts group['auto_scaling_group_name']
 #end
 
-instances = cache.ec2_instances
+#instances = cache.ec2_instances
 #ap instances
 #instances.each do |id, instance|
 #  puts instance['instance_id']
@@ -48,7 +51,7 @@ instances = cache.ec2_instances
 #ap instances
 #instances.each do |id, instance|
 #  puts id
-#  puts instance.to_yaml
+#  ap instance[:private_ip_address] #.to_yaml
 #  exit
 #end
 
@@ -60,6 +63,21 @@ instances = cache.ec2_instances
 #  resources.each_key do |logical_resource_id|
 #    puts "#{stack_name}:#{logical_resource_id}"
 #  end
+#end
+
+stuff = cache.get_snapshots()
+stuff.each_key do |volume|
+  stuff[volume].each do |snapshot|
+    ap snapshot
+  end
+end
+
+exit
+#ap instances
+#instances.each do |id, instance|
+#  puts id
+#  ap instance[:private_ip_address] #.to_yaml
+#  exit
 #end
 
 exit
