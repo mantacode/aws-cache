@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.summary = 'AWS api access layer that caches via Redis.'
   s.description = 'You know, to avoid api throttling errors.'
   s.licenses = ['MIT']
-  s.authors = ["Stephen J. Smith"]
+  s.authors = ["Stephen J. Smith", "Brian J. Schrock"]
   s.email = 'stsmith@manta.com'
   s.files += Dir['lib/**/*.rb']
   s.add_runtime_dependency 'aws-sdk'
