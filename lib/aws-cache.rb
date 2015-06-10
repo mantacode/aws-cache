@@ -4,6 +4,7 @@ require 'aws-sdk'
 require 'yaml'
 require 'pry'
 require 'aws-cache-version'
+require 'awesome_print'
 
 class AwsCache
   # Please follow semantic versioning (semver.org).
@@ -87,12 +88,15 @@ class AwsCache
   end
 
   def describe_stacks
-    cloudformation_stacks = cache_get('aws_cloudformation_describe_stacks', 900) do
+    cloudformation_stacks = cache_get('aws_cloudformation_describe_stacks', 3 ) do
       cloudformation_stacks = {}
     
       cfn = Aws::CloudFormation::Client.new(region: @region)
       pages = cfn.describe_stacks
+      ap pages
       pages.each do |page|
+        ap page
+        exit
         page.data[:stacks].each do |stack|
 	  list_to_hash!(stack, [:parameters], :parameter_key)
 	  list_to_hash!(stack, [:outputs], :output_key)
@@ -173,6 +177,14 @@ class AwsCache
       snapshots
 	  end
     return snapshots
+  end
+
+  def get_stuff()
+    stuff = cache_get('aws_ec2_stuff', 300) do
+      autoscaling = Aws::AutoScaling::Client.new(region: 'us-east-1')
+      stuff = autoscaling.describe_auto_scaling_groups
+      return stuff
+    end
   end
 
 

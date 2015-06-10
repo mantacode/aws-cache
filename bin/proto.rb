@@ -16,6 +16,15 @@ port = 6379
 keyspace = ARGV[0] || 'debug'
 cache = AwsCache.new({'keyspace' => keyspace, 'host' => host, 'port' => port})
 
+
+output = cache.get_stuff()
+output.each do |page|
+  page.each do |data|
+    ap data.data
+  end
+end
+
+exit
 #puts AwsCache::VERSION
 #exit
 
@@ -24,7 +33,7 @@ cache = AwsCache.new({'keyspace' => keyspace, 'host' => host, 'port' => port})
 
 #stacks = cache.describe_stacks
 #stacks.each do |id, stack|
-#  ap stack[:stack_name]
+  #ap stack[:stack_name]
 #end
 #stacks = cache.list_active_stacks
 #stacks = cache.describe_stacks
