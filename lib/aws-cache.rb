@@ -138,8 +138,8 @@ class AwsCache
   def get_stacks()
     output = cache_get_2('get_stacks', 300) do
       aws_object = Aws::CloudFormation::Client.new(region: @region)
-      pages = aws_object.list_stacks
-      output = process_page( 'stack_summaries', pages)
+      pages = aws_object.describe_stacks
+      output = process_page( 'stacks', pages)
     end
     return output
   end
@@ -167,6 +167,7 @@ class AwsCache
     pages.each do |page|
       page.each do |data|
         data.data[key].each do |entry|
+          ap entry
           output.push(entry)
         end
       end
