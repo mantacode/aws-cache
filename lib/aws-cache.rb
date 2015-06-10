@@ -135,58 +135,44 @@ class AwsCache
     return stack_resources
   end
 
-  # One way this is different than describe_stacks is that it includes
-  # deleted stacks.
-  def list_stacks
-    stacks = cache_get('aws_cloudformation_list_stacks', 900) do
-      # Can't return a hash, because some stacks will appear more
-      # than once, such as if the stack was deleted and recreated.
-      stacks = []
-    
-      cfn = Aws::CloudFormation::Client.new(region: @region)
-      pages = cfn.list_stacks
-      pages.each do |page|
-        page.data[:stack_summaries].each do |stack|
-	  stacks.push(stack)
-	end
-      end
-    
-      stacks
+  def get_stacks()
+    output = cache_get_2('get_stacks', 300) do
+      aws_object = Aws::CloudFormation::Client.new(region: @region)
+      pages = aws_object.list_stacks
+      output = process_page( 'stack_summaries', pages)
     end
-
-    return stacks
+    return output
   end
 
   def get_snapshots()
-    snapshots = cache_get('aws_ec2_snapshots', 9) do
-      snapshots = Hash.new()
-      ec2 = Aws::EC2::Client.new(region: @region)
-      pages = ec2.describe_snapshots
-      pages.each do |page|
-        page.data.each do |data|
-          data.each do |snap|
-            if snapshots.has_key?(snap[:volume_id]) then
-              snapshots[snap[:volume_id]].push(snap)
-            else
-              snapshots[snap[:volume_id]] = Array.new()
-              snapshots[snap[:volume_id]].push(snap)
-            end
-          end
+    output = cache_get_2('get_snapshots', 300) do
+      aws_object = Aws::EC2::Client.new(region: 'us-east-1')
+      pages = aws_object.describe_snapshots
+      output = process_page( 'snapshots', pages)
+    end
+    return output
+  end
+
+  def get_autoscaling_groups()
+    output = cache_get_2('get_autoscaling_groups', 300) do
+      aws_object = Aws::AutoScaling::Client.new(region: 'us-east-1')
+      pages = aws_object.describe_auto_scaling_groups
+      output = process_page( 'auto_scaling_groups', pages)
+    end
+    return output
+  end
+
+  def process_page( key, pages)
+    output = Array.new()
+    pages.each do |page|
+      page.each do |data|
+        data.data[key].each do |entry|
+          output.push(entry)
         end
       end
-      snapshots
-	  end
-    return snapshots
-  end
-
-  def get_stuff()
-    stuff = cache_get('aws_ec2_stuff', 300) do
-      autoscaling = Aws::AutoScaling::Client.new(region: 'us-east-1')
-      stuff = autoscaling.describe_auto_scaling_groups
-      return stuff
     end
+    return output
   end
-
 
   private
   def optional_element(hash, keys, default=nil)
@@ -210,9 +196,25 @@ class AwsCache
     return false
   end
 
+  def cache_get_2(key, ttl)
+    vkey = "#{key}_#{@keyspace}"
+    output = @redis.get(vkey)
+    if output.nil?
+      print "Did not return results from cache\n"
+      output = yield
+      output = YAML.dump(output)
+      @redis.setex(vkey, ttl, output )
+    else
+      print "Did return results from cache\n"
+    end
+    return YAML.load(output)
+  end
+
+
   def cache_get(key, ttl)
     vkey = "#{key}_#{@keyspace}"
     hash = @redis.get(vkey)
+    ap hash.class.name
     unless hash.nil?
       hash = YAML.load(hash)
     end
