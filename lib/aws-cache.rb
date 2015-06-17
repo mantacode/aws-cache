@@ -55,87 +55,63 @@ class AwsCache
     return stack_instances
   end
 
-  def auto_scaling_groups
-    groups = cache_get('aws_auto_scaling_groups', 300) do
-      groups = {}
-    
-      autoscaling = Aws::AutoScaling::Client.new(region: @region)
-      pages = autoscaling.describe_auto_scaling_groups
-      pages.each do |page|
-        page.data[:auto_scaling_groups].each do |group|
-	  instances = Hash.new()
-	  list_to_hash!(group, [:instances], :instance_id)
-	  list_to_hash!(group, [:tags], :key)
-	  groups[group[:auto_scaling_group_name]] = group
-	end
-      end
-    
-      groups
-    end
-
-    return groups
-  end
-
   def stack_auto_scaling_groups(stack_name)
-    groups = self.auto_scaling_groups
-    stack_groups = {}
-    groups.each do |name, group|
-      if stack_name == optional_element(group, [:tags,'StackName',:value], '')
-        stack_groups[name] = group
+    autoscaling_groups = Array.new()
+    output = self.list_stack_resources(stack_name)
+    output.each do |entry|
+      if entry[:resource_type] == "AWS::AutoScaling::AutoScalingGroup"
+        autoscaling_groups.push(entry[:physical_resource_id])
       end
     end
-    return stack_groups
+    return autoscaling_groups
   end
 
-  def describe_stacks
-    cloudformation_stacks = cache_get('aws_cloudformation_describe_stacks', 3 ) do
-      cloudformation_stacks = {}
-    
-      cfn = Aws::CloudFormation::Client.new(region: @region)
-      pages = cfn.describe_stacks
-      ap pages
-      pages.each do |page|
-        ap page
-        exit
-        page.data[:stacks].each do |stack|
-	  list_to_hash!(stack, [:parameters], :parameter_key)
-	  list_to_hash!(stack, [:outputs], :output_key)
-	  list_to_hash!(stack, [:tags], :key)
-	  cloudformation_stacks[stack[:stack_name]] = stack
-	end
+  def get_sub_stacks( stack_name)
+    substacks = Array.new()
+    stacks = self.list_stack_resources(stack_name)
+    stacks.each do |entry|
+      if entry[:resource_type] == "AWS::CloudFormation::Stack"
+        self.describe_stacks.each do |stack|
+          if entry[:physical_resource_id] == stack[:stack_id]
+            substacks.push(stack[:stack_name])
+          end
+        end
       end
-    
-      cloudformation_stacks
     end
-
-    return cloudformation_stacks
+    return substacks
   end
-
+        
   def describe_stack(stack_name)
     stacks = self.describe_stacks
-    return stacks[stack_name]
-  end
-
-  def list_stack_resources(stack_name)
-    stack_resources = cache_get("aws_cloudformation_list_stack_resources:#{stack_name}", 900) do
-      stack_resources = {}
-      cfn = Aws::CloudFormation::Client.new(region: @region)
-
-      pages = cfn.list_stack_resources(stack_name: stack_name)
-      pages.each do |page|
-        resources = page.data[:stack_resource_summaries]
-	resources.each do |resource|
-	  stack_resources[resource[:logical_resource_id]] = resource
-	end
+    stacks.each do |stack|
+      if stack[:stack_name] == stack_name
+        return stack
       end
-    
-      stack_resources
     end
-
-    return stack_resources
+    return nil
   end
 
-  def get_stacks()
+  def list_stack_resources( stack_name)
+    output = cache_get_2("list_stack_resources-#{stack_name}", 300) do
+      aws_object = Aws::CloudFormation::Client.new(region: @region)
+      pages = aws_object.list_stack_resources(stack_name: stack_name)
+      output = process_page( 'stack_resource_summaries', pages)
+    end
+    return output
+  end
+
+  def get_asg_instances(asg)
+    output = cache_get_2("describe_auto_scaling_instances-#{asg}", 300) do
+      aws_object = Aws::AutoScaling::Client.new(region: @region) 
+      pages = aws_object.describe_auto_scaling_groups(auto_scaling_group_names: [ asg.to_s ])
+      #pages.data[:auto_scaling_groups][0][:instances].each do |instance|
+      #  ap instance[:instance_id]
+      #end
+   end 
+    return output
+  end
+
+  def describe_stacks()
     output = cache_get_2('get_stacks', 300) do
       aws_object = Aws::CloudFormation::Client.new(region: @region)
       pages = aws_object.describe_stacks
@@ -144,18 +120,18 @@ class AwsCache
     return output
   end
 
-  def get_snapshots()
+  def describe_snapshots()
     output = cache_get_2('get_snapshots', 300) do
-      aws_object = Aws::EC2::Client.new(region: 'us-east-1')
+      aws_object = Aws::EC2::Client.new(region: @region)
       pages = aws_object.describe_snapshots
       output = process_page( 'snapshots', pages)
     end
     return output
   end
 
-  def get_autoscaling_groups()
+  def describe_autoscaling_groups()
     output = cache_get_2('get_autoscaling_groups', 300) do
-      aws_object = Aws::AutoScaling::Client.new(region: 'us-east-1')
+      aws_object = Aws::AutoScaling::Client.new(region: @region) 
       pages = aws_object.describe_auto_scaling_groups
       output = process_page( 'auto_scaling_groups', pages)
     end
@@ -167,7 +143,6 @@ class AwsCache
     pages.each do |page|
       page.each do |data|
         data.data[key].each do |entry|
-          ap entry
           output.push(entry)
         end
       end
@@ -201,12 +176,9 @@ class AwsCache
     vkey = "#{key}_#{@keyspace}"
     output = @redis.get(vkey)
     if output.nil?
-      print "Did not return results from cache\n"
       output = yield
       output = YAML.dump(output)
       @redis.setex(vkey, ttl, output )
-    else
-      print "Did return results from cache\n"
     end
     return YAML.load(output)
   end
