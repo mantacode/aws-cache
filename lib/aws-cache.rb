@@ -21,50 +21,26 @@ class AwsCache
     @region = optional_element(opts, ['region'], 'us-east-1')
   end
 
-  def ec2_instances
-    instances = cache_get('aws_ec2_instances', 300) do
-      instances = {}
-    
-      ec2 = Aws::EC2::Client.new(region: @region)
-      pages = ec2.describe_instances
-      pages.each do |page|
-	      page = 
-        page.data[:reservations].each do |res|
-          res[:instances].each do |instance|
-	    list_to_hash!(instance, [:tags], :key)
-	    list_to_hash!(instance, [:block_device_mappings], :device_name)
-	    instances[instance[:instance_id]] = instance
-	  end
-	end
-      end
-    
-      instances
-    end
-
-    return instances
-  end
-
-  def stack_instances(stack_name)
-    instances = self.ec2_instances
-    stack_instances = {}
-    instances.each do |id, instance|
-      if stack_name == optional_element(instance, [:tags,'StackName',:value], '')
-        stack_instances[id] = instance
-      end
-    end
-    return stack_instances
-  end
-
   def stack_auto_scaling_groups(stack_name)
     autoscaling_groups = Array.new()
     output = self.list_stack_resources(stack_name)
     output.each do |entry|
       if entry[:resource_type] == "AWS::AutoScaling::AutoScalingGroup"
-        autoscaling_groups.push(entry[:physical_resource_id])
+        autoscaling_groups.push(entry)
       end
     end
     return autoscaling_groups
   end
+
+  def list_stack_resources( stack_name)
+    output = cache_get_2("list_stack_resources-#{stack_name}", 300) do
+      aws_object = Aws::CloudFormation::Client.new(region: @region)
+      pages = aws_object.list_stack_resources(stack_name: stack_name)
+      output = process_page( 'stack_resource_summaries', pages)
+    end
+    return output
+  end
+
 
   def get_sub_stacks( stack_name)
     substacks = Array.new()
@@ -73,7 +49,7 @@ class AwsCache
       if entry[:resource_type] == "AWS::CloudFormation::Stack"
         self.describe_stacks.each do |stack|
           if entry[:physical_resource_id] == stack[:stack_id]
-            substacks.push(stack[:stack_name])
+            substacks.push(stack)
           end
         end
       end
@@ -89,26 +65,6 @@ class AwsCache
       end
     end
     return nil
-  end
-
-  def list_stack_resources( stack_name)
-    output = cache_get_2("list_stack_resources-#{stack_name}", 300) do
-      aws_object = Aws::CloudFormation::Client.new(region: @region)
-      pages = aws_object.list_stack_resources(stack_name: stack_name)
-      output = process_page( 'stack_resource_summaries', pages)
-    end
-    return output
-  end
-
-  def get_asg_instances(asg)
-    output = cache_get_2("describe_auto_scaling_instances-#{asg}", 300) do
-      aws_object = Aws::AutoScaling::Client.new(region: @region) 
-      pages = aws_object.describe_auto_scaling_groups(auto_scaling_group_names: [ asg.to_s ])
-      #pages.data[:auto_scaling_groups][0][:instances].each do |instance|
-      #  ap instance[:instance_id]
-      #end
-   end 
-    return output
   end
 
   def describe_stacks()
@@ -129,11 +85,39 @@ class AwsCache
     return output
   end
 
+  def get_asg_instances(asg)
+    instances = Array.new()
+    asg = self.describe_auto_scaling_group(asg)
+    asg[:instances].each do |instance|
+      instances.push(instance)
+    end
+    return instances
+  end
+
+  def describe_auto_scaling_group(asg)
+    asgroups = self.describe_autoscaling_groups()
+    asgroups.each do |asgroup|
+      if asgroup[:auto_scaling_group_name] == asg then
+        return asgroup
+      end
+    end
+    return nil
+  end
+
   def describe_autoscaling_groups()
     output = cache_get_2('get_autoscaling_groups', 300) do
       aws_object = Aws::AutoScaling::Client.new(region: @region) 
       pages = aws_object.describe_auto_scaling_groups
       output = process_page( 'auto_scaling_groups', pages)
+    end
+    return output
+  end
+
+  def describe_instances()
+    output = cache_get_2('describe_instances', 300) do
+      aws_object = Aws::EC2::Client.new(region: @region)
+      pages = aws_object.describe_instances
+      output = process_page( 'reservations', pages)
     end
     return output
   end
