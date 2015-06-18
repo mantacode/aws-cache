@@ -16,80 +16,38 @@ port = 6379
 keyspace = ARGV[0] || 'debug'
 cache = AwsCache.new({'keyspace' => keyspace, 'host' => host, 'port' => port})
 
-
-output = cache.get_stuff()
-output.each do |page|
-  page.each do |data|
-    ap data.data
-  end
-end
-
-exit
-#puts AwsCache::VERSION
-#exit
-
-#active_stacks = Mstacks.new.active_mstacks_hash
-#ap active_stacks
-
-#stacks = cache.describe_stacks
-#stacks.each do |id, stack|
-  #ap stack[:stack_name]
+##############################################################
+#To get all instances associated with a given auto scaling group
+#you can do something like this.
+##############################################################
+#placeHolder = Array.new()
+#cache.get_asg_instances( "manta-site-e2e-smoketest-AdminServiceNestedStack-1LB9D75MS2SUE-AdminServiceAutoScalingGroup-1I2AY0INI3GH").each do |instances|
+#  placeHolder.push(instances[:instance_id])
 #end
-#stacks = cache.list_active_stacks
-#stacks = cache.describe_stacks
-#ap stacks.first
-#stacks.each do |id, stack|
-#  ap stack
-#  exit
-##  #puts stack['stack_status']
-#  #puts id
-#end
-
-#groups = cache.stack_auto_scaling_groups('manta-site--main--production')
-#groups = cache.auto_scaling_groups
-#groups.each do |name, group|
-#  puts group['auto_scaling_group_name']
-#end
-
-#instances = cache.ec2_instances
-#ap instances
-#instances.each do |id, instance|
-#  puts instance['instance_id']
-#end
-
-#instances = StackHub::AWSClient.new.instances_for('manta-site--main--production')
-
-#instances = cache.stack_instances('manta-site--main--production')
-#ap instances
-#instances.each do |id, instance|
-#  puts id
-#  ap instance[:private_ip_address] #.to_yaml
-#  exit
-#end
-
-#cache.list_stack_resources('manta-site--main--production')
-#stacks = cache.describe_stacks
-#ap stacks
-#stacks.each_key do |stack_name|
-#  resources = cache.list_stack_resources(stack_name)
-#  resources.each_key do |logical_resource_id|
-#    puts "#{stack_name}:#{logical_resource_id}"
+#cache.describe_instances().each do |instance|
+#  instance[:instances].each do |stuff|
+#    if placeHolder.include?(stuff[:instance_id]) then
+#      ap instance
+#    end
 #  end
 #end
+##############################################################
 
-#stuff = cache.get_snapshots()
-#stuff.each_key do |volume|
-#  stuff[volume].each do |snapshot|
-#    ap snapshot
+##############################################################
+#To get all instances in a stack with substacks do this.
+##############################################################
+#cache.stack_auto_scaling_groups('manta-site--main--production').each do |asg|
+#  ap cache.get_asg_instances(asg[:physical_resource_id])
+#end
+#
+#cache.get_sub_stacks('manta-site--main--production').each do |stack|
+#  ap stack[:stack_name]
+#  cache.stack_auto_scaling_groups(stack[:stack_name]).each do |asg|
+#    ap cache.get_asg_instances(asg[:physical_resource_id])
 #  end
 #end
+##############################################################
 
-#exit
-#ap instances
-#instances.each do |id, instance|
-#  puts id
-#  ap instance[:private_ip_address] #.to_yaml
-#  exit
-#end
+puts AwsCache::VERSION
 
 exit
