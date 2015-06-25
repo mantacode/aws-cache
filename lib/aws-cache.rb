@@ -4,6 +4,7 @@ require 'aws-sdk'
 require 'yaml'
 require 'pry'
 require 'aws-cache-version'
+require 'awesome_print'
 
 class AwsCache
   # Please follow semantic versioning (semver.org).
@@ -20,161 +21,118 @@ class AwsCache
     @region = optional_element(opts, ['region'], 'us-east-1')
   end
 
-  def ec2_instances
-    instances = cache_get('aws_ec2_instances', 300) do
-      instances = {}
-    
-      ec2 = Aws::EC2::Client.new(region: @region)
-      pages = ec2.describe_instances
-      pages.each do |page|
-	      page = 
-        page.data[:reservations].each do |res|
-          res[:instances].each do |instance|
-	    list_to_hash!(instance, [:tags], :key)
-	    list_to_hash!(instance, [:block_device_mappings], :device_name)
-	    instances[instance[:instance_id]] = instance
-	  end
-	end
-      end
-    
-      instances
-    end
-
-    return instances
-  end
-
-  def stack_instances(stack_name)
-    instances = self.ec2_instances
-    stack_instances = {}
-    instances.each do |id, instance|
-      if stack_name == optional_element(instance, [:tags,'StackName',:value], '')
-        stack_instances[id] = instance
-      end
-    end
-    return stack_instances
-  end
-
-  def auto_scaling_groups
-    groups = cache_get('aws_auto_scaling_groups', 300) do
-      groups = {}
-    
-      autoscaling = Aws::AutoScaling::Client.new(region: @region)
-      pages = autoscaling.describe_auto_scaling_groups
-      pages.each do |page|
-        page.data[:auto_scaling_groups].each do |group|
-	  instances = Hash.new()
-	  list_to_hash!(group, [:instances], :instance_id)
-	  list_to_hash!(group, [:tags], :key)
-	  groups[group[:auto_scaling_group_name]] = group
-	end
-      end
-    
-      groups
-    end
-
-    return groups
-  end
-
   def stack_auto_scaling_groups(stack_name)
-    groups = self.auto_scaling_groups
-    stack_groups = {}
-    groups.each do |name, group|
-      if stack_name == optional_element(group, [:tags,'StackName',:value], '')
-        stack_groups[name] = group
+    autoscaling_groups = Array.new()
+    output = self.list_stack_resources(stack_name)
+    output.each do |entry|
+      if entry[:resource_type] == "AWS::AutoScaling::AutoScalingGroup"
+        autoscaling_groups.push(entry)
       end
     end
-    return stack_groups
+    return autoscaling_groups
   end
 
-  def describe_stacks
-    cloudformation_stacks = cache_get('aws_cloudformation_describe_stacks', 900) do
-      cloudformation_stacks = {}
-    
-      cfn = Aws::CloudFormation::Client.new(region: @region)
-      pages = cfn.describe_stacks
-      pages.each do |page|
-        page.data[:stacks].each do |stack|
-	  list_to_hash!(stack, [:parameters], :parameter_key)
-	  list_to_hash!(stack, [:outputs], :output_key)
-	  list_to_hash!(stack, [:tags], :key)
-	  cloudformation_stacks[stack[:stack_name]] = stack
-	end
-      end
-    
-      cloudformation_stacks
+  def list_stack_resources( stack_name)
+    output = cache_get_2("list_stack_resources-#{stack_name}", 300) do
+      aws_object = Aws::CloudFormation::Client.new(region: @region)
+      pages = aws_object.list_stack_resources(stack_name: stack_name)
+      output = process_page( 'stack_resource_summaries', pages)
     end
-
-    return cloudformation_stacks
+    return output
   end
 
-  def describe_stack(stack_name)
-    stacks = self.describe_stacks
-    return stacks[stack_name]
-  end
 
-  def list_stack_resources(stack_name)
-    stack_resources = cache_get("aws_cloudformation_list_stack_resources:#{stack_name}", 900) do
-      stack_resources = {}
-      cfn = Aws::CloudFormation::Client.new(region: @region)
-
-      pages = cfn.list_stack_resources(stack_name: stack_name)
-      pages.each do |page|
-        resources = page.data[:stack_resource_summaries]
-	resources.each do |resource|
-	  stack_resources[resource[:logical_resource_id]] = resource
-	end
-      end
-    
-      stack_resources
-    end
-
-    return stack_resources
-  end
-
-  # One way this is different than describe_stacks is that it includes
-  # deleted stacks.
-  def list_stacks
-    stacks = cache_get('aws_cloudformation_list_stacks', 900) do
-      # Can't return a hash, because some stacks will appear more
-      # than once, such as if the stack was deleted and recreated.
-      stacks = []
-    
-      cfn = Aws::CloudFormation::Client.new(region: @region)
-      pages = cfn.list_stacks
-      pages.each do |page|
-        page.data[:stack_summaries].each do |stack|
-	  stacks.push(stack)
-	end
-      end
-    
-      stacks
-    end
-
-    return stacks
-  end
-
-  def get_snapshots()
-    snapshots = cache_get('aws_ec2_snapshots', 9) do
-      snapshots = Hash.new()
-      ec2 = Aws::EC2::Client.new(region: @region)
-      pages = ec2.describe_snapshots
-      pages.each do |page|
-        page.data.each do |data|
-          data.each do |snap|
-            if snapshots.has_key?(snap[:volume_id]) then
-              snapshots[snap[:volume_id]].push(snap)
-            else
-              snapshots[snap[:volume_id]] = Array.new()
-              snapshots[snap[:volume_id]].push(snap)
-            end
+  def get_sub_stacks( stack_name)
+    substacks = Array.new()
+    stacks = self.list_stack_resources(stack_name)
+    stacks.each do |entry|
+      if entry[:resource_type] == "AWS::CloudFormation::Stack"
+        self.describe_stacks.each do |stack|
+          if entry[:physical_resource_id] == stack[:stack_id]
+            substacks.push(stack)
           end
         end
       end
-      snapshots
-	  end
-    return snapshots
+    end
+    return substacks
+  end
+        
+  def describe_stack(stack_name)
+    stacks = self.describe_stacks
+    stacks.each do |stack|
+      if stack[:stack_name] == stack_name
+        return stack
+      end
+    end
+    return nil
   end
 
+  def describe_stacks()
+    output = cache_get_2('get_stacks', 300) do
+      aws_object = Aws::CloudFormation::Client.new(region: @region)
+      pages = aws_object.describe_stacks
+      output = process_page( 'stacks', pages)
+    end
+    return output
+  end
+
+  def describe_snapshots()
+    output = cache_get_2('get_snapshots', 300) do
+      aws_object = Aws::EC2::Client.new(region: @region)
+      pages = aws_object.describe_snapshots
+      output = process_page( 'snapshots', pages)
+    end
+    return output
+  end
+
+  def get_asg_instances(asg)
+    instances = Array.new()
+    asg = self.describe_auto_scaling_group(asg)
+    asg[:instances].each do |instance|
+      instances.push(instance)
+    end
+    return instances
+  end
+
+  def describe_auto_scaling_group(asg)
+    asgroups = self.describe_autoscaling_groups()
+    asgroups.each do |asgroup|
+      if asgroup[:auto_scaling_group_name] == asg then
+        return asgroup
+      end
+    end
+    return nil
+  end
+
+  def describe_autoscaling_groups()
+    output = cache_get_2('get_autoscaling_groups', 300) do
+      aws_object = Aws::AutoScaling::Client.new(region: @region) 
+      pages = aws_object.describe_auto_scaling_groups
+      output = process_page( 'auto_scaling_groups', pages)
+    end
+    return output
+  end
+
+  def describe_instances()
+    output = cache_get_2('describe_instances', 300) do
+      aws_object = Aws::EC2::Client.new(region: @region)
+      pages = aws_object.describe_instances
+      output = process_page( 'reservations', pages)
+    end
+    return output
+  end
+
+  def process_page( key, pages)
+    output = Array.new()
+    pages.each do |page|
+      page.each do |data|
+        data.data[key].each do |entry|
+          output.push(entry)
+        end
+      end
+    end
+    return output
+  end
 
   private
   def optional_element(hash, keys, default=nil)
@@ -198,9 +156,22 @@ class AwsCache
     return false
   end
 
+  def cache_get_2(key, ttl)
+    vkey = "#{key}_#{@keyspace}"
+    output = @redis.get(vkey)
+    if output.nil?
+      output = yield
+      output = YAML.dump(output)
+      @redis.setex(vkey, ttl, output )
+    end
+    return YAML.load(output)
+  end
+
+
   def cache_get(key, ttl)
     vkey = "#{key}_#{@keyspace}"
     hash = @redis.get(vkey)
+    ap hash.class.name
     unless hash.nil?
       hash = YAML.load(hash)
     end
