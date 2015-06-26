@@ -21,6 +21,17 @@ class AwsCache
     @region = optional_element(opts, ['region'], 'us-east-1')
   end
 
+  def describe_instance( instance_id)
+    instances = self.describe_instances()
+    instances.each do |instance|
+      ap instance
+      if instance[:instances][0] == instance_id then
+        ap instance[:instances][0]
+      end
+    end
+    return instances
+  end
+
   def stack_auto_scaling_groups(stack_name)
     autoscaling_groups = Array.new()
     output = self.list_stack_resources(stack_name)
