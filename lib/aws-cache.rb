@@ -24,12 +24,11 @@ class AwsCache
   def describe_instance( instance_id)
     instances = self.describe_instances()
     instances.each do |instance|
-      ap instance
-      if instance[:instances][0] == instance_id then
-        ap instance[:instances][0]
+      if instance[:instances][0][:instance_id] == instance_id then
+        return instance[:instances][0]
       end
     end
-    return instances
+    return nil
   end
 
   def stack_auto_scaling_groups(stack_name)
