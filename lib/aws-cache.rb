@@ -32,14 +32,21 @@ class AwsCache
 
   #Returns an array of hashes describing the autoscaling groups for the selected stack.
   def stack_auto_scaling_groups(stack_name)
-    autoscaling_groups = Array.new()
-    output = self.list_stack_resources(stack_name)
-    output.each do |entry|
-      if entry[:resource_type] == "AWS::AutoScaling::AutoScalingGroup"
-        autoscaling_groups.push(entry)
+    auto_scaling_groups = Array.new()
+    stack_resources = self.list_stack_resources(stack_name)
+    asg_groups = stack_resources.select do |record|
+      record[:resource_type] == "AWS::AutoScaling::AutoScalingGroup"
+    end
+    auto_scaling_groups.concat(asg_groups)
+    substacks = stack_resources.select do |record|
+      record[:resource_type] == "AWS::CloudFormation::Stack"
+    end
+    if substacks.length > 0 then
+      substacks.each do |stack|
+        auto_scaling_groups.concat(self.stack_auto_scaling_groups(stack[:physical_resource_id]))
       end
     end
-    return autoscaling_groups
+    return auto_scaling_groups
   end
 
   #Returns an array of hashes describing the substacks for the selected stack.
