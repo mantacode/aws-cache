@@ -1,9 +1,10 @@
 language: ruby
 rvm:
-- 1.9.3
-cache:
-- bundler
-script: bundle exec rspec spec
+  - 2.0.0
+  - 2.2.3
+sudo: false
+cache: bundler
+script: bundle exec rake
 deploy:
   provider: rubygems
   api_key:
