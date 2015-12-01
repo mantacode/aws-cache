@@ -14,4 +14,8 @@ Gem::Specification.new do |s|
   s.files += Dir['lib/**/*.rb']
   s.add_runtime_dependency 'aws-sdk'
   s.add_runtime_dependency 'redis'
+
+  s.add_development_dependency 'awesome_print'
+  s.add_development_dependency 'rspec'
+  s.add_development_dependency 'travis'
 end
