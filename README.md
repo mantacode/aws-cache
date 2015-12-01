@@ -1,6 +1,7 @@
 # aws-cache
 
 [![Build Status](https://travis-ci.org/mantacode/aws-cache.png?branch=master)](https://travis-ci.org/mantacode/aws-cache)
+[![Gem Version](http://img.shields.io/gem/v/aws-cache.svg)](https://rubygems.org/gems/aws-cache)
 
 ## Why
 
