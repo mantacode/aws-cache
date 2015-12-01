@@ -10,41 +10,41 @@ host = 'redis.aws.ecnext.net'
 port = 6379
 
 keyspace = ARGV[0] || 'debug'
-cache = AwsCache.new({'keyspace' => keyspace, 'host' => host, 'port' => port})
+cache = AwsCache.new('keyspace' => keyspace, 'host' => host, 'port' => port)
 
 ##############################################################
-#To get all instances associated with a given auto scaling group
-#you can do something like this.
+# To get all instances associated with a given auto scaling group
+# you can do something like this.
 ##############################################################
-#placeHolder = Array.new()
-#cache.get_asg_instances( "manta-site-e2e-smoketest-AdminServiceNestedStack-1LB9D75MS2SUE-AdminServiceAutoScalingGroup-1I2AY0INI3GH").each do |instances|
+# placeHolder = Array.new()
+# cache.get_asg_instances( "manta-site-e2e-smoketest-AdminServiceNestedStack-1LB9D75MS2SUE-AdminServiceAutoScalingGroup-1I2AY0INI3GH").each do |instances|
 #  placeHolder.push(instances[:instance_id])
-#end
-#cache.describe_instances().each do |instance|
+# end
+# cache.describe_instances().each do |instance|
 #  instance[:instances].each do |stuff|
 #    if placeHolder.include?(stuff[:instance_id]) then
 #      ap instance
 #    end
 #  end
-#end
+# end
 ##############################################################
 
 ##############################################################
-#To get all instances in a stack with substacks do this.
+# To get all instances in a stack with substacks do this.
 ##############################################################
-#cache.stack_auto_scaling_groups('manta-site--main--production').each do |asg|
+# cache.stack_auto_scaling_groups('manta-site--main--production').each do |asg|
 #  ap cache.get_asg_instances(asg[:physical_resource_id])
-#end
-#
-#cache.get_sub_stacks('manta-site--main--production').each do |stack|
+# end
+
+# cache.get_sub_stacks('manta-site--main--production').each do |stack|
 #  ap stack[:stack_name]
 #  cache.stack_auto_scaling_groups(stack[:stack_name]).each do |asg|
 #    ap cache.get_asg_instances(asg[:physical_resource_id])
 #  end
-#end
+# end
 ##############################################################
 
-cache.describe_instance("i-5f1824a0")
+cache.describe_instance('i-5f1824a0')
 
 puts AwsCache::VERSION
 
