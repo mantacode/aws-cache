@@ -1,12 +1,9 @@
 require 'redis'
 require 'aws-sdk'
 require 'yaml'
-require 'aws-cache-version'
+require 'aws-cache/version'
 
 class AwsCache
-  # Please follow semantic versioning (semver.org).
-  VERSION = AwsCacheVersion::VERSION
-
   def initialize(opts)
     opts['port'] = 6379 unless opts.key?('port')
     opts['host'] = 'aws-cache' unless opts.key?('host')
