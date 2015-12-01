@@ -4,10 +4,7 @@ libdir = File.dirname(__FILE__) + '/../lib/'
 $LOAD_PATH.unshift(libdir) unless $LOAD_PATH.include?(libdir)
 
 require 'awesome_print'
-require 'yaml'
-
 require 'aws-cache'
-require 'redis'
 
 host = 'redis.aws.ecnext.net'
 port = 6379

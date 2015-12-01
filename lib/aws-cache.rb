@@ -1,10 +1,7 @@
 require 'redis'
-require 'json'
 require 'aws-sdk'
 require 'yaml'
-require 'pry'
 require 'aws-cache-version'
-require 'awesome_print'
 
 class AwsCache
   # Please follow semantic versioning (semver.org).
@@ -64,8 +61,8 @@ class AwsCache
     end
     return substacks
   end
-  
-  #Returns a hash describing the stack requested.      
+
+  #Returns a hash describing the stack requested.
   def describe_stack(stack_name)
     stacks = self.describe_stacks
     stacks.each do |stack|
@@ -139,7 +136,7 @@ class AwsCache
   #Returns an Array of Hashes containing auto scaling group structures
   def describe_autoscaling_groups()
     output = cache_get('get_autoscaling_groups', 300) do
-      aws_object = Aws::AutoScaling::Client.new(region: @region) 
+      aws_object = Aws::AutoScaling::Client.new(region: @region)
       pages = aws_object.describe_auto_scaling_groups
       output = process_page( 'auto_scaling_groups', pages)
     end
@@ -175,7 +172,7 @@ class AwsCache
       end
       hash = hash[key]
     end
-    return hash 
+    return hash
   end
 
   def has_key?(hash_or_struct, key)
