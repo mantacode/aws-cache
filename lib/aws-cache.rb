@@ -35,7 +35,7 @@ class AwsCache
     substacks = stack_resources.select do |record|
       record[:resource_type] == 'AWS::CloudFormation::Stack'
     end
-    if substacks.length > 0
+    unless substacks.empty?
       substacks.each do |stack|
         auto_scaling_groups.concat(stack_auto_scaling_groups(stack[:physical_resource_id]))
       end
